@@ -154,11 +154,14 @@ body {
   border: 0.5px solid var(--border); animation: slideIn 0.18s ease;
 }
 @keyframes slideIn { from{opacity:0;transform:translateY(-5px)} to{opacity:1;transform:translateY(0)} }
-.item-dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
-.item-num { font-size: 11px; color: var(--text3); min-width: 14px; }
-.item-jpy { font-family: 'DM Mono', monospace; font-size: 15px; color: var(--text); flex: 1; }
-.item-notax { font-family: 'DM Mono', monospace; font-size: 13px; color: var(--accent); }
-.item-del { background: none; border: none; color: var(--text3); font-size: 17px; cursor: pointer; padding: 2px 4px; line-height: 1; }
+.item-dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; margin-top: 2px; }
+.item-num { font-size: 11px; color: var(--text3); min-width: 14px; margin-top: 2px; }
+.item-body { flex: 1; min-width: 0; }
+.item-jpy { font-family: 'DM Mono', monospace; font-size: 15px; color: var(--text); }
+.item-sub { display: flex; gap: 8px; margin-top: 3px; align-items: baseline; }
+.item-notax { font-family: 'DM Mono', monospace; font-size: 12px; color: var(--accent); }
+.item-twd { font-family: 'DM Mono', monospace; font-size: 12px; color: var(--accent2); }
+.item-del { background: none; border: none; color: var(--text3); font-size: 17px; cursor: pointer; padding: 2px 4px; line-height: 1; align-self: flex-start; }
 .summary {
   margin: 10px 0 0; background: var(--surface2);
   border-radius: var(--radius); padding: 14px 16px;
@@ -435,7 +438,8 @@ function renderList() {
     const color = it.taxRate===8?'#7ac8a0':'#e8c97a';
     const row = document.createElement('div');
     row.className='item-row';
-    row.innerHTML=`<div class="item-dot" style="background:${color}"></div><div class="item-num">${i+1}</div><div class="item-jpy">¥${it.jpy.toLocaleString()} <span style="font-size:10px;color:var(--text3)">${it.taxRate}%</span></div><div class="item-notax">→ ¥${it.noTax.toLocaleString()}</div><button class="item-del" onclick="removeItem(${i})">×</button>`;
+    const twdStr = exRate ? `<span class="item-twd">NT$ ${Math.round(it.noTax * exRate).toLocaleString()}</span>` : '';
+    row.innerHTML=`<div class="item-dot" style="background:${color}"></div><div class="item-num">${i+1}</div><div class="item-body"><div class="item-jpy">¥${it.jpy.toLocaleString()} <span style="font-size:10px;color:var(--text3)">${it.taxRate}%</span></div><div class="item-sub"><span class="item-notax">免稅 ¥${it.noTax.toLocaleString()}</span>${twdStr}</div></div><button class="item-del" onclick="removeItem(${i})">×</button>`;
     list.appendChild(row);
   });
   const tax=totalJpy-totalNoTax;
