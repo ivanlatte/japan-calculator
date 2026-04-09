@@ -1,0 +1,458 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="日本免稅計算">
+<title>日本免稅計算器</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Noto+Sans+TC:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #0e0f11;
+  --surface: #1a1b1f;
+  --surface2: #24262c;
+  --border: rgba(255,255,255,0.08);
+  --accent: #e8c97a;
+  --accent2: #7ac8e8;
+  --danger: #e87a7a;
+  --text: #f0ede6;
+  --text2: #8a8880;
+  --text3: #5a5856;
+  --food: #7ac8a0;
+  --general: #e8c97a;
+  --radius: 16px;
+  --radius-sm: 10px;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'Noto Sans TC', sans-serif;
+  min-height: 100vh;
+  max-width: 430px;
+  margin: 0 auto;
+  user-select: none;
+}
+.header {
+  padding: 48px 20px 14px;
+  display: flex; align-items: flex-end; justify-content: space-between;
+}
+.header-title { font-size: 13px; font-weight: 500; letter-spacing: 0.12em; color: var(--text2); text-transform: uppercase; }
+.header-flag { font-size: 22px; line-height: 1; }
+.rate-bar {
+  margin: 0 20px 14px;
+  background: var(--surface);
+  border-radius: var(--radius-sm);
+  padding: 10px 14px;
+  display: flex; align-items: center; gap: 10px;
+  border: 0.5px solid var(--border);
+}
+.rate-dot {
+  width: 7px; height: 7px; border-radius: 50%;
+  background: var(--text3); flex-shrink: 0; transition: background 0.4s;
+}
+.rate-dot.live { background: var(--food); animation: pulse 2.5s ease-in-out infinite; }
+.rate-dot.error { background: var(--danger); animation: none; }
+@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.3} }
+.rate-label { font-size: 12px; color: var(--text2); white-space: nowrap; }
+.rate-input {
+  background: transparent; border: none; outline: none;
+  font-family: 'DM Mono', monospace; font-size: 15px;
+  color: var(--accent2); flex: 1; min-width: 0;
+}
+.rate-unit { font-size: 12px; color: var(--text3); }
+.rate-status { font-size: 10px; color: var(--text3); white-space: nowrap; }
+.tax-section { margin: 0 20px 14px; }
+.tax-toggle { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.tax-btn {
+  padding: 11px 10px; border-radius: var(--radius-sm);
+  border: 1px solid var(--border); background: var(--surface);
+  cursor: pointer; transition: all 0.15s; text-align: center;
+}
+.tax-btn .tb-rate {
+  font-family: 'DM Mono', monospace; font-size: 22px; font-weight: 500;
+  line-height: 1; margin-bottom: 3px; color: var(--text2);
+}
+.tax-btn .tb-label { font-size: 11px; color: var(--text3); }
+.tax-btn.active-food { border-color: var(--food); background: rgba(122,200,160,0.1); }
+.tax-btn.active-food .tb-rate { color: var(--food); }
+.tax-btn.active-food .tb-label { color: var(--food); opacity: 0.7; }
+.tax-btn.active-general { border-color: var(--general); background: rgba(232,201,122,0.1); }
+.tax-btn.active-general .tb-rate { color: var(--general); }
+.tax-btn.active-general .tb-label { color: var(--general); opacity: 0.7; }
+.display {
+  margin: 0 20px 8px; background: var(--surface);
+  border-radius: var(--radius); padding: 14px 16px;
+  border: 0.5px solid var(--border);
+}
+.display-top { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 4px; }
+.display-hint { font-size: 11px; color: var(--text3); letter-spacing: 0.05em; }
+.display-tax-badge { font-size: 11px; padding: 2px 8px; border-radius: 20px; font-weight: 500; }
+.badge-food { background: rgba(122,200,160,0.15); color: var(--food); }
+.badge-general { background: rgba(232,201,122,0.15); color: var(--general); }
+.display-expr {
+  font-family: 'DM Mono', monospace; font-size: 12px; color: var(--text3);
+  min-height: 16px; text-align: right; margin-bottom: 2px;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.display-jpy {
+  font-family: 'DM Mono', monospace; font-size: 38px; font-weight: 500;
+  color: var(--text); text-align: right; line-height: 1;
+  letter-spacing: -0.02em; overflow: hidden; text-overflow: ellipsis;
+  white-space: nowrap; transition: font-size 0.1s; margin-bottom: 10px;
+}
+.display-jpy .cs { font-size: 18px; color: var(--text2); font-weight: 400; margin-right: 2px; }
+.display-results {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 8px;
+  padding-top: 10px; border-top: 0.5px solid var(--border);
+}
+.ri-label { font-size: 10px; color: var(--text3); margin-bottom: 2px; letter-spacing: 0.05em; }
+.ri-val { font-family: 'DM Mono', monospace; font-size: 16px; font-weight: 500; }
+.right { text-align: right; }
+.c-notax { color: var(--accent); }
+.c-twd { color: var(--accent2); }
+.add-btn-wrap { margin: 0 20px 10px; }
+.add-btn {
+  width: 100%; padding: 11px; background: transparent;
+  border: 1px dashed rgba(255,255,255,0.13); border-radius: var(--radius-sm);
+  color: var(--text2); font-size: 14px; font-family: 'Noto Sans TC', sans-serif;
+  cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px;
+  transition: all 0.15s;
+}
+.add-btn:active { background: var(--surface); border-color: var(--accent); color: var(--accent); }
+.keypad { margin: 0 20px; display: grid; grid-template-columns: repeat(4, 1fr); gap: 7px; }
+.key {
+  height: 62px; border-radius: var(--radius-sm); border: none; font-size: 20px;
+  font-family: 'DM Mono', monospace; cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  transition: transform 0.08s, opacity 0.08s;
+  background: var(--surface); color: var(--text);
+  position: relative; overflow: hidden;
+}
+.key:active { transform: scale(0.92); opacity: 0.65; }
+.key-op { background: var(--surface2); color: var(--accent); font-size: 22px; }
+.key-fn { background: var(--surface2); color: var(--text2); font-size: 14px; font-family: 'Noto Sans TC', sans-serif; }
+.key-eq { background: var(--accent); color: #1a1400; font-weight: 500; font-size: 26px; }
+.key-clear { color: var(--danger); }
+.key-span2 { grid-column: span 2; }
+.ripple {
+  position: absolute; border-radius: 50%; background: rgba(255,255,255,0.12);
+  animation: rippleAnim 0.38s ease-out forwards; pointer-events: none;
+}
+@keyframes rippleAnim { from{width:0;height:0;opacity:1} to{width:120px;height:120px;margin-left:-60px;margin-top:-60px;opacity:0} }
+.list-section { margin: 18px 20px 0; display: none; }
+.list-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
+.list-title { font-size: 12px; color: var(--text2); letter-spacing: 0.1em; text-transform: uppercase; }
+.list-clear-btn { font-size: 11px; color: var(--danger); background: none; border: none; cursor: pointer; font-family: 'Noto Sans TC', sans-serif; opacity: 0.7; padding: 2px 6px; }
+.item-list { display: flex; flex-direction: column; gap: 6px; }
+.item-row {
+  background: var(--surface); border-radius: var(--radius-sm);
+  padding: 10px 12px; display: flex; align-items: center; gap: 10px;
+  border: 0.5px solid var(--border); animation: slideIn 0.18s ease;
+}
+@keyframes slideIn { from{opacity:0;transform:translateY(-5px)} to{opacity:1;transform:translateY(0)} }
+.item-dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
+.item-num { font-size: 11px; color: var(--text3); min-width: 14px; }
+.item-jpy { font-family: 'DM Mono', monospace; font-size: 15px; color: var(--text); flex: 1; }
+.item-notax { font-family: 'DM Mono', monospace; font-size: 13px; color: var(--accent); }
+.item-del { background: none; border: none; color: var(--text3); font-size: 17px; cursor: pointer; padding: 2px 4px; line-height: 1; }
+.summary {
+  margin: 10px 0 0; background: var(--surface2);
+  border-radius: var(--radius); padding: 14px 16px;
+  border: 0.5px solid var(--border);
+}
+.sum-row { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 7px; }
+.sum-row:last-child { margin-bottom: 0; }
+.sum-label { font-size: 12px; color: var(--text2); }
+.sum-val { font-family: 'DM Mono', monospace; font-size: 14px; color: var(--text); }
+.sum-main .sum-label { font-size: 13px; color: var(--text); }
+.sum-main .sum-val { font-size: 22px; color: var(--accent); }
+.sum-twd .sum-val { color: var(--accent2); font-size: 16px; }
+.sum-divider { border: none; border-top: 0.5px solid var(--border); margin: 8px 0; }
+.bottom-pad { height: 48px; }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div><div class="header-title">日本免稅計算器</div></div>
+  <div class="header-flag">🇯🇵</div>
+</div>
+
+<div class="rate-bar">
+  <div class="rate-dot" id="rate-dot"></div>
+  <div class="rate-label">匯率</div>
+  <input class="rate-input" id="rate-input" type="number" inputmode="decimal" step="0.0001" min="0.0001" placeholder="連線取得中…" onchange="onRateChange()">
+  <div class="rate-unit">TWD/JPY</div>
+  <div class="rate-status" id="rate-status">—</div>
+</div>
+
+<div class="tax-section">
+  <div class="tax-toggle">
+    <button class="tax-btn" id="btn8" onclick="setTax(8)">
+      <div class="tb-rate">8%</div>
+      <div class="tb-label">食品・飲料</div>
+    </button>
+    <button class="tax-btn active-general" id="btn10" onclick="setTax(10)">
+      <div class="tb-rate">10%</div>
+      <div class="tb-label">一般商品</div>
+    </button>
+  </div>
+</div>
+
+<div class="display">
+  <div class="display-top">
+    <div class="display-hint">含稅標價 (¥)</div>
+    <div class="display-tax-badge badge-general" id="tax-badge">一般 10%</div>
+  </div>
+  <div class="display-expr" id="display-expr"></div>
+  <div class="display-jpy" id="display-jpy"><span class="cs">¥</span>0</div>
+  <div class="display-results">
+    <div>
+      <div class="ri-label">免稅後 (JPY)</div>
+      <div class="ri-val c-notax" id="res-notax">¥ —</div>
+    </div>
+    <div class="right">
+      <div class="ri-label">換算 (TWD)</div>
+      <div class="ri-val c-twd" id="res-twd">NT$ —</div>
+    </div>
+  </div>
+</div>
+
+<div class="add-btn-wrap">
+  <button class="add-btn" onclick="addItem()">＋ 加入清單</button>
+</div>
+
+<div class="keypad">
+  <button class="key key-fn key-clear" onclick="clearAll()">AC</button>
+  <button class="key key-fn" onclick="delChar()">⌫</button>
+  <button class="key key-fn" onclick="inputOp('%')">%</button>
+  <button class="key key-op" onclick="inputOp('÷')">÷</button>
+  <button class="key" onclick="inputNum('7')">7</button>
+  <button class="key" onclick="inputNum('8')">8</button>
+  <button class="key" onclick="inputNum('9')">9</button>
+  <button class="key key-op" onclick="inputOp('×')">×</button>
+  <button class="key" onclick="inputNum('4')">4</button>
+  <button class="key" onclick="inputNum('5')">5</button>
+  <button class="key" onclick="inputNum('6')">6</button>
+  <button class="key key-op" onclick="inputOp('−')">−</button>
+  <button class="key" onclick="inputNum('1')">1</button>
+  <button class="key" onclick="inputNum('2')">2</button>
+  <button class="key" onclick="inputNum('3')">3</button>
+  <button class="key key-op" onclick="inputOp('+')">+</button>
+  <button class="key key-span2" onclick="inputNum('0')">0</button>
+  <button class="key" onclick="inputDot()">.</button>
+  <button class="key key-eq" onclick="calculate()">=</button>
+</div>
+
+<div class="list-section" id="list-section">
+  <div class="list-header">
+    <div class="list-title">購物清單</div>
+    <button class="list-clear-btn" onclick="clearList()">全部清除</button>
+  </div>
+  <div class="item-list" id="item-list"></div>
+  <div class="summary">
+    <div class="sum-row">
+      <div class="sum-label">含稅合計</div>
+      <div class="sum-val" id="sum-orig">¥0</div>
+    </div>
+    <div class="sum-row">
+      <div class="sum-label">稅金合計</div>
+      <div class="sum-val" id="sum-tax">¥0</div>
+    </div>
+    <hr class="sum-divider">
+    <div class="sum-row sum-main">
+      <div class="sum-label">免稅後合計</div>
+      <div class="sum-val" id="sum-notax">¥0</div>
+    </div>
+    <div class="sum-row sum-twd">
+      <div class="sum-label">換算新台幣</div>
+      <div class="sum-val" id="sum-twd">NT$ —</div>
+    </div>
+  </div>
+</div>
+
+<div class="bottom-pad"></div>
+
+<script>
+let taxRate = 10, expr = '', displayVal = '0', items = [], exRate = null, justCalc = false;
+
+const RATE_APIS = [
+  { url: 'https://api.exchangerate-api.com/v4/latest/JPY', parse: d => d.rates && d.rates.TWD },
+  { url: 'https://open.er-api.com/v6/latest/JPY', parse: d => d.rates && d.rates.TWD },
+];
+
+async function fetchRate() {
+  setRateUI('loading');
+  for (const api of RATE_APIS) {
+    try {
+      const ctrl = new AbortController();
+      const tid = setTimeout(() => ctrl.abort(), 6000);
+      const res = await fetch(api.url, { signal: ctrl.signal });
+      clearTimeout(tid);
+      if (!res.ok) continue;
+      const data = await res.json();
+      const twd = api.parse(data);
+      if (twd && isFinite(twd)) {
+        exRate = twd;
+        document.getElementById('rate-input').value = twd.toFixed(4);
+        setRateUI('live');
+        calcDisplay(); renderList();
+        return;
+      }
+    } catch (_) {}
+  }
+  setRateUI('error');
+}
+
+function setRateUI(state) {
+  const dot = document.getElementById('rate-dot');
+  const st = document.getElementById('rate-status');
+  dot.className = 'rate-dot';
+  if (state === 'live') {
+    dot.classList.add('live');
+    st.textContent = '即時'; st.style.color = 'var(--food)';
+  } else if (state === 'manual') {
+    dot.classList.add('live');
+    st.textContent = '手動'; st.style.color = 'var(--accent2)';
+  } else if (state === 'error') {
+    dot.classList.add('error');
+    st.textContent = '請手動輸入'; st.style.color = 'var(--danger)';
+    document.getElementById('rate-input').placeholder = '例：0.2150';
+  } else {
+    st.textContent = '取得中…'; st.style.color = 'var(--text3)';
+  }
+}
+
+function onRateChange() {
+  const v = parseFloat(document.getElementById('rate-input').value);
+  if (v > 0) { exRate = v; setRateUI('manual'); }
+  calcDisplay(); renderList();
+}
+
+function setTax(rate) {
+  taxRate = rate;
+  document.getElementById('btn8').className = 'tax-btn' + (rate===8?' active-food':'');
+  document.getElementById('btn10').className = 'tax-btn' + (rate===10?' active-general':'');
+  const b = document.getElementById('tax-badge');
+  b.className = 'display-tax-badge ' + (rate===8?'badge-food':'badge-general');
+  b.textContent = rate===8 ? '食品 8%' : '一般 10%';
+  calcDisplay();
+}
+
+function inputNum(n) {
+  if (justCalc) { expr=''; displayVal='0'; justCalc=false; }
+  if (displayVal === '0') displayVal = n; else displayVal += n;
+  if (displayVal.length > 12) displayVal = displayVal.slice(0,12);
+  updateDisplay();
+}
+
+function inputDot() {
+  if (justCalc) { expr=''; displayVal='0'; justCalc=false; }
+  if (!displayVal.includes('.')) displayVal += '.';
+  updateDisplay();
+}
+
+function inputOp(op) {
+  justCalc = false;
+  if (expr && displayVal === '') expr = expr.replace(/[\+\-×÷−]\s*$/, '') + ' ' + op + ' ';
+  else { expr += displayVal + ' ' + op + ' '; displayVal = ''; }
+  updateDisplay();
+}
+
+function calculate() {
+  const full = (expr + displayVal).trim();
+  if (!full) return;
+  try {
+    const ev = full.replace(/÷/g,'/').replace(/×/g,'*').replace(/−/g,'-').replace(/(\d+\.?\d*)\s*%/g,'($1/100)');
+    const result = Function('"use strict";return(' + ev + ')')();
+    if (!isFinite(result)) throw 0;
+    const r = parseFloat(result.toFixed(4));
+    document.getElementById('display-expr').textContent = full + ' =';
+    expr = ''; displayVal = String(r); justCalc = true;
+    updateDisplay();
+  } catch(_) { displayVal='Err'; expr=''; renderJPY('Err'); }
+}
+
+function clearAll() {
+  expr=''; displayVal='0'; justCalc=false;
+  document.getElementById('display-expr').textContent='';
+  updateDisplay();
+}
+
+function delChar() {
+  if (justCalc) { clearAll(); return; }
+  displayVal = displayVal.length > 1 ? displayVal.slice(0,-1) : '0';
+  updateDisplay();
+}
+
+function renderJPY(v) {
+  const el = document.getElementById('display-jpy');
+  if (v==='Err') { el.innerHTML='<span class="cs">¥</span>Err'; return; }
+  const n = parseFloat(v);
+  if (isNaN(n)) { el.innerHTML='<span class="cs">¥</span>0'; return; }
+  const s = n.toLocaleString('ja-JP',{maximumFractionDigits:2});
+  el.style.fontSize = s.length>9?'24px':s.length>6?'30px':'38px';
+  el.innerHTML = '<span class="cs">¥</span>' + s;
+}
+
+function updateDisplay() { renderJPY(displayVal); if(expr) document.getElementById('display-expr').textContent=expr; calcDisplay(); }
+
+function calcDisplay() {
+  const num = parseFloat(displayVal);
+  if (!num || num<=0 || displayVal==='Err') {
+    document.getElementById('res-notax').textContent='¥ —';
+    document.getElementById('res-twd').textContent='NT$ —'; return;
+  }
+  const noTax = Math.round(num/(1+taxRate/100));
+  document.getElementById('res-notax').textContent = '¥ ' + noTax.toLocaleString();
+  document.getElementById('res-twd').textContent = exRate ? 'NT$ ' + Math.round(noTax*exRate).toLocaleString() : 'NT$ —';
+}
+
+function addItem() {
+  const num = parseFloat(displayVal);
+  if (!num||num<=0||displayVal==='Err') return;
+  const jpy = Math.round(num);
+  items.push({ jpy, noTax: Math.round(jpy/(1+taxRate/100)), taxRate });
+  renderList(); clearAll();
+  const ls = document.getElementById('list-section');
+  ls.style.display='block';
+  setTimeout(()=>ls.scrollIntoView({behavior:'smooth',block:'nearest'}),80);
+}
+
+function removeItem(i) { items.splice(i,1); renderList(); if(!items.length) document.getElementById('list-section').style.display='none'; }
+function clearList() { items=[]; renderList(); document.getElementById('list-section').style.display='none'; }
+
+function renderList() {
+  const list = document.getElementById('item-list');
+  list.innerHTML='';
+  let totalJpy=0, totalNoTax=0;
+  items.forEach((it,i)=>{
+    totalJpy+=it.jpy; totalNoTax+=it.noTax;
+    const color = it.taxRate===8?'#7ac8a0':'#e8c97a';
+    const row = document.createElement('div');
+    row.className='item-row';
+    row.innerHTML=`<div class="item-dot" style="background:${color}"></div><div class="item-num">${i+1}</div><div class="item-jpy">¥${it.jpy.toLocaleString()} <span style="font-size:10px;color:var(--text3)">${it.taxRate}%</span></div><div class="item-notax">→ ¥${it.noTax.toLocaleString()}</div><button class="item-del" onclick="removeItem(${i})">×</button>`;
+    list.appendChild(row);
+  });
+  const tax=totalJpy-totalNoTax;
+  document.getElementById('sum-orig').textContent='¥'+totalJpy.toLocaleString();
+  document.getElementById('sum-tax').textContent='¥'+tax.toLocaleString();
+  document.getElementById('sum-notax').textContent='¥'+totalNoTax.toLocaleString();
+  document.getElementById('sum-twd').textContent=exRate?'NT$ '+Math.round(totalNoTax*exRate).toLocaleString():'NT$ —';
+}
+
+document.querySelectorAll('.key').forEach(btn=>{
+  btn.addEventListener('click',function(){
+    const r=document.createElement('span'); r.className='ripple';
+    this.appendChild(r); setTimeout(()=>r.remove(),400);
+  });
+});
+
+fetchRate();
+</script>
+</body>
+</html>
