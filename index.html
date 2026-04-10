@@ -176,6 +176,53 @@ body {
 .sum-twd .sum-val { color: var(--accent2); font-size: 16px; }
 .sum-divider { border: none; border-top: 0.5px solid var(--border); margin: 8px 0; }
 .bottom-pad { height: 48px; }
+
+/* Discount bar */
+.disc-section { margin: 0 20px 10px; }
+.disc-label { font-size: 11px; color: var(--text3); letter-spacing: 0.08em; text-transform: uppercase; margin-bottom: 7px; }
+.disc-row { display: flex; gap: 6px; align-items: center; }
+.disc-chips { display: flex; gap: 6px; flex: 1; overflow-x: auto; scrollbar-width: none; }
+.disc-chips::-webkit-scrollbar { display: none; }
+.disc-chip {
+  flex-shrink: 0;
+  padding: 6px 12px;
+  border-radius: 20px;
+  border: 0.5px solid var(--border);
+  background: var(--surface);
+  font-family: 'DM Mono', monospace;
+  font-size: 13px; color: var(--text2);
+  cursor: pointer; transition: all 0.15s;
+  white-space: nowrap;
+}
+.disc-chip:active { transform: scale(0.94); }
+.disc-chip.active { border-color: var(--danger); background: rgba(232,122,122,0.12); color: var(--danger); }
+.disc-custom-wrap {
+  flex-shrink: 0;
+  display: flex; align-items: center; gap: 4px;
+  background: var(--surface); border: 0.5px solid var(--border);
+  border-radius: 20px; padding: 5px 10px;
+}
+.disc-custom-input {
+  background: transparent; border: none; outline: none;
+  font-family: 'DM Mono', monospace; font-size: 13px;
+  color: var(--accent2); width: 36px; text-align: center;
+}
+.disc-custom-unit { font-size: 12px; color: var(--text3); }
+.disc-custom-btn {
+  background: none; border: none; font-size: 13px;
+  color: var(--accent2); cursor: pointer; padding: 0 2px;
+  font-family: 'Noto Sans TC', sans-serif;
+}
+.disc-active-banner {
+  display: none; margin: 0 20px 8px;
+  background: rgba(232,122,122,0.1);
+  border: 0.5px solid rgba(232,122,122,0.3);
+  border-radius: var(--radius-sm);
+  padding: 7px 12px;
+  display: none; align-items: center; justify-content: space-between;
+}
+.disc-banner-text { font-size: 12px; color: var(--danger); }
+.disc-banner-clear { font-size: 11px; color: var(--text3); background: none; border: none; cursor: pointer; font-family: 'Noto Sans TC', sans-serif; }
 </style>
 </head>
 <body>
@@ -227,6 +274,31 @@ body {
 
 <div class="add-btn-wrap">
   <button class="add-btn" onclick="addItem()">＋ 加入清單</button>
+</div>
+
+<!-- Discount active banner -->
+<div class="disc-active-banner" id="disc-banner">
+  <span class="disc-banner-text" id="disc-banner-text"></span>
+  <button class="disc-banner-clear" onclick="clearDiscount()">取消折扣</button>
+</div>
+
+<!-- Discount chips -->
+<div class="disc-section">
+  <div class="disc-label">快速折扣</div>
+  <div class="disc-row">
+    <div class="disc-chips" id="disc-chips">
+      <button class="disc-chip" data-pct="5" onclick="applyDiscount(5)">95折</button>
+      <button class="disc-chip" data-pct="10" onclick="applyDiscount(10)">9折</button>
+      <button class="disc-chip" data-pct="20" onclick="applyDiscount(20)">8折</button>
+      <button class="disc-chip" data-pct="30" onclick="applyDiscount(30)">7折</button>
+      <button class="disc-chip" data-pct="50" onclick="applyDiscount(50)">5折</button>
+    </div>
+    <div class="disc-custom-wrap">
+      <input class="disc-custom-input" id="disc-custom-input" type="number" inputmode="decimal" min="1" max="99" placeholder="折" title="輸入折扣%數">
+      <span class="disc-custom-unit">% off</span>
+      <button class="disc-custom-btn" onclick="applyCustomDiscount()">套用</button>
+    </div>
+  </div>
 </div>
 
 <div class="keypad">
@@ -281,7 +353,7 @@ body {
 <div class="bottom-pad"></div>
 
 <script>
-let taxRate = 10, expr = '', displayVal = '0', items = [], exRate = null, justCalc = false;
+let taxRate = 10, expr = '', displayVal = '0', items = [], exRate = null, justCalc = false, discountPct = 0;
 
 const RATE_APIS = [
   { url: 'https://api.exchangerate-api.com/v4/latest/JPY', parse: d => d.rates && d.rates.TWD },
@@ -410,16 +482,60 @@ function calcDisplay() {
     document.getElementById('res-notax').textContent='¥ —';
     document.getElementById('res-twd').textContent='NT$ —'; return;
   }
-  const noTax = Math.round(num/(1+taxRate/100));
+  const discounted = discountPct > 0 ? num * (1 - discountPct/100) : num;
+  const noTax = Math.round(discounted/(1+taxRate/100));
   document.getElementById('res-notax').textContent = '¥ ' + noTax.toLocaleString();
   document.getElementById('res-twd').textContent = exRate ? 'NT$ ' + Math.round(noTax*exRate).toLocaleString() : 'NT$ —';
+}
+
+function applyDiscount(pct) {
+  discountPct = (discountPct === pct) ? 0 : pct; // toggle off if same
+  updateDiscountUI();
+  calcDisplay();
+}
+
+function applyCustomDiscount() {
+  const val = parseFloat(document.getElementById('disc-custom-input').value);
+  if (!val || val <= 0 || val >= 100) return;
+  discountPct = val;
+  document.getElementById('disc-custom-input').value = '';
+  updateDiscountUI();
+  calcDisplay();
+}
+
+function clearDiscount() {
+  discountPct = 0;
+  document.getElementById('disc-custom-input').value = '';
+  updateDiscountUI();
+  calcDisplay();
+}
+
+function updateDiscountUI() {
+  // Update chips active state
+  document.querySelectorAll('.disc-chip').forEach(btn => {
+    const pct = parseFloat(btn.getAttribute('data-pct'));
+    btn.classList.toggle('active', pct === discountPct);
+  });
+  // Show/hide banner
+  const banner = document.getElementById('disc-banner');
+  const bannerText = document.getElementById('disc-banner-text');
+  if (discountPct > 0) {
+    const fold = (100 - discountPct) / 10;
+    const foldStr = Number.isInteger(fold) ? fold + '折' : discountPct + '% off';
+    bannerText.textContent = '已套用折扣：' + foldStr + '（扣除 ' + discountPct + '%）';
+    banner.style.display = 'flex';
+  } else {
+    banner.style.display = 'none';
+  }
 }
 
 function addItem() {
   const num = parseFloat(displayVal);
   if (!num||num<=0||displayVal==='Err') return;
-  const jpy = Math.round(num);
-  items.push({ jpy, noTax: Math.round(jpy/(1+taxRate/100)), taxRate });
+  const discounted = discountPct > 0 ? num * (1 - discountPct/100) : num;
+  const jpy = Math.round(discounted);
+  const origJpy = Math.round(num);
+  items.push({ jpy, origJpy, noTax: Math.round(jpy/(1+taxRate/100)), taxRate, discountPct });
   renderList(); clearAll();
   const ls = document.getElementById('list-section');
   ls.style.display='block';
@@ -439,7 +555,8 @@ function renderList() {
     const row = document.createElement('div');
     row.className='item-row';
     const twdStr = exRate ? `<span class="item-twd">NT$ ${Math.round(it.noTax * exRate).toLocaleString()}</span>` : '';
-    row.innerHTML=`<div class="item-dot" style="background:${color}"></div><div class="item-num">${i+1}</div><div class="item-body"><div class="item-jpy">¥${it.jpy.toLocaleString()} <span style="font-size:10px;color:var(--text3)">${it.taxRate}%</span></div><div class="item-sub"><span class="item-notax">免稅 ¥${it.noTax.toLocaleString()}</span>${twdStr}</div></div><button class="item-del" onclick="removeItem(${i})">×</button>`;
+    const discTag = it.discountPct > 0 ? `<span style="font-size:10px;color:var(--danger);margin-left:4px">${it.discountPct}% off</span>` : '';
+    row.innerHTML=`<div class="item-dot" style="background:${color}"></div><div class="item-num">${i+1}</div><div class="item-body"><div class="item-jpy">¥${it.jpy.toLocaleString()} <span style="font-size:10px;color:var(--text3)">${it.taxRate}%</span>${discTag}</div><div class="item-sub"><span class="item-notax">免稅 ¥${it.noTax.toLocaleString()}</span>${twdStr}</div></div><button class="item-del" onclick="removeItem(${i})">×</button>`;
     list.appendChild(row);
   });
   const tax=totalJpy-totalNoTax;
